@@ -21,6 +21,19 @@ const SENTIMENT = {
   neutral: { color: "#7A6A52", bg: "#F5EFE4", emoji: "😐", label: "Neutral" },
 } as const;
 
+const INTENT = {
+  scam: { color: "#7D3C4C", label: "Scam / fraud" },
+  threat: { color: "#A93226", label: "Threat" },
+  complaint: { color: "#2874A6", label: "Complaint" },
+  normal: { color: "#1A7A4A", label: "Normal" },
+} as const;
+
+const RISK = {
+  low: { color: "#1A7A4A", label: "Low" },
+  medium: { color: "#B77700", label: "Medium" },
+  high: { color: "#A93226", label: "High" },
+} as const;
+
 type Props = {
   data: AnalyzeResponse | null;
   loading: boolean;
@@ -50,6 +63,8 @@ export function AnalysisCard({ data, loading, error }: Props) {
   if (!data) return null;
 
   const cfg = SENTIMENT[data.sentiment.label];
+  const ico = INTENT[data.intent.label];
+  const rsk = RISK[data.risk.band];
   const scores = data.sentiment.scores;
   const pieData = [
     { name: "Positive", value: scores.positive, color: SENTIMENT.positive.color },
@@ -68,15 +83,82 @@ export function AnalysisCard({ data, loading, error }: Props) {
           <div className={styles.verdictLabel} style={{ color: cfg.color }}>
             {cfg.label} sentiment
           </div>
-          <div className={styles.verdictSub}>Phase 2 · Groq ({data.provider_model})</div>
+          <div className={styles.verdictSub}>
+            Phase 3 · intent & risk · Groq ({data.provider_model})
+          </div>
         </div>
         <div className={styles.verdictBadge} style={{ background: cfg.color }}>
           {data.sentiment.confidence.toFixed(1)}%
         </div>
       </div>
 
+      <div
+        className={styles.riskBanner}
+        style={{
+          background: `linear-gradient(90deg, ${rsk.color}12 0%, var(--paper) 100%)`,
+        }}
+      >
+        <div className={styles.riskBannerText}>
+          <div className={styles.riskBannerTitle} style={{ color: rsk.color }}>
+            Communication risk
+          </div>
+          <div className={styles.riskBandRow}>
+            <span className={styles.bandPill} style={{ borderColor: rsk.color, color: rsk.color }}>
+              {rsk.label}
+            </span>
+            <span className={styles.riskScoreText}>{data.risk.score.toFixed(0)}/100</span>
+          </div>
+        </div>
+        <div className={styles.riskMeterLine}>
+          <div className={styles.riskTrack}>
+            <div
+              className={styles.riskFill}
+              style={{ width: `${Math.min(100, data.risk.score)}%`, background: rsk.color }}
+            />
+          </div>
+        </div>
+      </div>
+
       <div className={styles.section}>
-        <div className={styles.sectionTitle}>Confidence</div>
+        <div className={styles.sectionTitle}>Intent (primary read)</div>
+        <p className={styles.intentLead}>
+          <span style={{ color: ico.color, fontWeight: 800 }}>{ico.label}</span>
+          <span className={styles.intentConf}>
+            {data.intent.confidence.toFixed(0)}% conf.
+          </span>
+        </p>
+        <div className={styles.intentGrid}>
+          {(
+            [
+              ["scam", "Scam"],
+              ["threat", "Threat"],
+              ["complaint", "Complaint"],
+              ["normal", "Normal"],
+            ] as const
+          ).map(([key, name]) => (
+            <div key={key} className={styles.intentCell}>
+              <span className={styles.intentName}>{name}</span>
+              <span className={styles.intentVal}>{data.intent.scores[key].toFixed(0)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {data.signals.length > 0 ? (
+        <div className={styles.section}>
+          <div className={styles.sectionTitle}>Signals (model + rules)</div>
+          <div className={styles.signalList}>
+            {data.signals.map((s) => (
+              <span key={s} className={styles.signalChip}>
+                {humanizeSignal(s)}
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      <div className={styles.section}>
+        <div className={styles.sectionTitle}>Confidence (sentiment)</div>
         <div className={styles.meter}>
           <div className={styles.track}>
             <div
@@ -191,4 +273,10 @@ function ScoreRow({ label, value, color }: { label: string; value: number; color
       </span>
     </div>
   );
+}
+
+function humanizeSignal(s: string) {
+  const t = s.replace(/[-_]+/g, " ").trim();
+  if (!t) return s;
+  return t.replace(/\b\w/g, (c) => c.toUpperCase());
 }

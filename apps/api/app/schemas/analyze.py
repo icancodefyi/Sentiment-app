@@ -38,12 +38,35 @@ class ToneBlock(BaseModel):
     scores: ToneScores
 
 
+class IntentScores(BaseModel):
+    scam: float = Field(ge=0, le=100)
+    threat: float = Field(ge=0, le=100)
+    complaint: float = Field(ge=0, le=100)
+    normal: float = Field(ge=0, le=100)
+
+
+class IntentBlock(BaseModel):
+    label: Literal["scam", "threat", "complaint", "normal"]
+    confidence: float = Field(ge=0, le=100)
+    scores: IntentScores
+
+
+class RiskBlock(BaseModel):
+    """score is 0–100; band is derived server-side from the final score."""
+
+    score: float = Field(ge=0, le=100)
+    band: Literal["low", "medium", "high"]
+
+
 class AnalyzeResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     sentiment: SentimentBlock
     emotions: EmotionScores
     tone: ToneBlock
+    intent: IntentBlock
+    risk: RiskBlock
+    signals: list[str] = Field(default_factory=list, max_length=24)
     rationale: str = Field(..., max_length=4000)
     provider_model: str = Field(..., description="LLM id used for this run")
     truncated: bool = False

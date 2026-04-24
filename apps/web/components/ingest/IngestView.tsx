@@ -129,8 +129,9 @@ export function IngestView() {
                 <em>structured signal.</em>
               </h1>
               <p className={styles.pageSubtitle}>
-                Ingest text, chat logs, or images — then Phase 2 runs automatically on the
-                cleaned transcript (sentiment, emotion surface, tone) via Groq on the API.
+                Ingest text, chat logs, or images — the API then runs Groq on the
+                cleaned transcript: sentiment, emotions, tone, intent, risk, and
+                model + rule signals.
                 Put <span className={styles.inlineCode}>GROQ_API_KEY</span> in{" "}
                 <span className={styles.inlineCode}>apps/api/.env</span> (not the web
                 bundle).
@@ -322,9 +323,9 @@ function EmptyState() {
         <div className={styles.emptyIcon}>✦</div>
         <p className={styles.emptyTitle}>Ingest output appears here</p>
         <p className={styles.emptyBody}>
-          Run text, chat lines, or an image on the left. You will get Groq-backed sentiment
-          + emotion + tone, then the ingest audit trail (cleaned text, OCR meta, chunks,
-          entities).
+          Run text, chat lines, or an image on the left. You will get Groq-backed
+          analysis (including intent and risk) plus the ingest audit trail (cleaned text,
+          OCR meta, chunks, entities).
         </p>
       </div>
     </div>

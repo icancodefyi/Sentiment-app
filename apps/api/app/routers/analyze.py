@@ -9,7 +9,7 @@ router = APIRouter(prefix="/api/v1", tags=["analyze"])
 
 @router.post("/analyze", response_model=AnalyzeResponse)
 def analyze(body: AnalyzeRequest) -> AnalyzeResponse:
-    """Phase 2: sentiment, emotion, and tone via Groq (JSON-only)."""
+    """Full analysis: sentiment, tone, intent, risk, signals (LLM) + rule-merged risk."""
     try:
         return analyze_with_groq(body.text)
     except RuntimeError as e:

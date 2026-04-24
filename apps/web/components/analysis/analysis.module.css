@@ -203,6 +203,144 @@
   color: var(--accent);
 }
 
+.riskBanner {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 24px 16px;
+  border-top: 1px solid var(--ink-10);
+  border-bottom: 1px solid var(--ink-10);
+}
+
+.riskBannerText {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.riskBannerTitle {
+  font-family: var(--font-serif), Georgia, serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.riskBandRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bandPill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border: 1.5px solid;
+  border-radius: 99px;
+  background: var(--paper);
+}
+
+.riskScoreText {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--ink-60);
+}
+
+.riskMeterLine {
+  width: 100%;
+}
+
+.riskTrack {
+  height: 8px;
+  width: 100%;
+  background: var(--ink-10);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.riskFill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.35s ease;
+}
+
+.intentLead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 12px;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  margin: 0;
+  color: var(--ink-60);
+}
+
+.intentConf {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ink-30);
+}
+
+.intentGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+@media (max-width: 520px) {
+  .intentGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.intentCell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--cream);
+  border: 1px solid var(--ink-10);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  align-items: center;
+  text-align: center;
+}
+
+.intentName {
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-30);
+}
+
+.intentVal {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.signalList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.signalChip {
+  display: inline-flex;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 99px;
+  background: var(--cream);
+  border: 1px solid var(--ink-10);
+  color: var(--ink-60);
+}
+
 .rationale {
   font-size: 0.88rem;
   color: var(--ink-60);

@@ -39,7 +39,7 @@ def api_v1_index() -> dict[str, object]:
             "chat": "POST /api/v1/ingest/chat",
             "image": "POST /api/v1/ingest/image (multipart)",
         },
-        "analyze": "POST /api/v1/analyze",
+        "analyze": "POST /api/v1/analyze (sentiment, tone, intent, risk, signals)",
         "docs": "/docs",
     }
 
