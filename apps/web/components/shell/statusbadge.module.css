@@ -1,0 +1,48 @@
+.wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dotUp {
+  background: var(--pos);
+  box-shadow: 0 0 0 3px var(--pos-light);
+  animation: pulseGreen 2s ease infinite;
+}
+
+.dotDown {
+  background: var(--neg);
+}
+
+.dotPending {
+  background: var(--ink-30);
+}
+
+@keyframes pulseGreen {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px var(--pos-light);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(82, 197, 133, 0.15);
+  }
+}
+
+.label {
+  font-size: 0.75rem;
+  color: var(--ink-60);
+  font-weight: 500;
+}
+
+@media (max-width: 600px) {
+  .label {
+    display: none;
+  }
+}
