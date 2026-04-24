@@ -1,0 +1,15 @@
+{
+  "name": "sentilx",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "setup": "node scripts/ensure-venv.mjs",
+    "dev": "node scripts/ensure-venv.mjs && concurrently -k -n web,api -c cyan,magenta \"pnpm --filter @sentilx/web dev\" \"node scripts/run-api.mjs\"",
+    "build": "pnpm --filter @sentilx/web build",
+    "start": "pnpm --filter @sentilx/web start",
+    "lint": "pnpm --filter @sentilx/web lint"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
