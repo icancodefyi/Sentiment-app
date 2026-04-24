@@ -2,9 +2,11 @@
 
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
-import { ingestChat, ingestImage, ingestText } from "@/lib/api";
-import type { IngestResponse } from "@/lib/ingest-types";
+import { AnalysisCard } from "@/components/analysis/AnalysisCard";
 import { Header } from "@/components/shell/Header";
+import { analyzeCommunication, ingestChat, ingestImage, ingestText } from "@/lib/api";
+import type { AnalyzeResponse } from "@/lib/analyze-types";
+import type { IngestResponse } from "@/lib/ingest-types";
 import styles from "./ingest.module.css";
 
 const MODES = [
@@ -28,6 +30,9 @@ export function IngestView() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<IngestResponse | null>(null);
+  const [analysis, setAnalysis] = useState<AnalyzeResponse | null>(null);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   const onDrop = useCallback((accepted: File[]) => {
     if (accepted.length > 0) {
@@ -56,6 +61,8 @@ export function IngestView() {
   const handleSubmit = async () => {
     setError("");
     setResult(null);
+    setAnalysis(null);
+    setAnalysisError(null);
     if (mode === "text" && !text.trim()) {
       setError("Please enter some text.");
       return;
@@ -74,14 +81,33 @@ export function IngestView() {
 
     setLoading(true);
     try {
+      let ing: IngestResponse;
       if (mode === "text") {
-        setResult(await ingestText(text));
+        ing = await ingestText(text);
       } else if (mode === "image") {
-        setResult(await ingestImage(file!, contextText));
+        ing = await ingestImage(file!, contextText);
       } else {
         const lines = chatText.split("\n").map((l) => l.trim()).filter(Boolean);
         const messages = lines.map((content) => ({ content }));
-        setResult(await ingestChat(messages));
+        ing = await ingestChat(messages);
+      }
+      setResult(ing);
+
+      const cleaned = ing.cleaned_text.trim();
+      if (cleaned.length > 0) {
+        setAnalysisLoading(true);
+        try {
+          setAnalysis(await analyzeCommunication(cleaned));
+          setAnalysisError(null);
+        } catch (ae) {
+          setAnalysis(null);
+          setAnalysisError(ae instanceof Error ? ae.message : "Analysis failed");
+        } finally {
+          setAnalysisLoading(false);
+        }
+      } else {
+        setAnalysis(null);
+        setAnalysisError("Nothing to analyze after ingest (empty text).");
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Request failed");
@@ -103,9 +129,11 @@ export function IngestView() {
                 <em>structured signal.</em>
               </h1>
               <p className={styles.pageSubtitle}>
-                Phase 1 — ingest text, chat logs, or images (PNG / WebP / JPEG). OCR
-                runs on the API; you get cleaned text, chunks, and regex entities for
-                trust before deeper analysis lands in Phase 2.
+                Ingest text, chat logs, or images — then Phase 2 runs automatically on the
+                cleaned transcript (sentiment, emotion surface, tone) via Groq on the API.
+                Put <span className={styles.inlineCode}>GROQ_API_KEY</span> in{" "}
+                <span className={styles.inlineCode}>apps/api/.env</span> (not the web
+                bundle).
               </p>
             </div>
 
@@ -258,14 +286,25 @@ export function IngestView() {
                     Processing…
                   </>
                 ) : (
-                  <>Run ingest</>
+                  <>Run ingest + analyze</>
                 )}
               </button>
             </div>
           </div>
 
           <div className={styles.analyzeRight}>
-            {result ? <IngestResult data={result} /> : <EmptyState />}
+            {result ? (
+              <div className={styles.rightStack}>
+                <AnalysisCard
+                  data={analysis}
+                  loading={analysisLoading}
+                  error={analysisError}
+                />
+                <IngestResult data={result} />
+              </div>
+            ) : (
+              <EmptyState />
+            )}
           </div>
         </div>
       </main>
@@ -283,9 +322,9 @@ function EmptyState() {
         <div className={styles.emptyIcon}>✦</div>
         <p className={styles.emptyTitle}>Ingest output appears here</p>
         <p className={styles.emptyBody}>
-          Run text, chat lines, or an image on the left. You will see cleaned text, OCR
-          metadata, chunks for downstream models, and detected entities (email, URL,
-          phone, money).
+          Run text, chat lines, or an image on the left. You will get Groq-backed sentiment
+          + emotion + tone, then the ingest audit trail (cleaned text, OCR meta, chunks,
+          entities).
         </p>
       </div>
     </div>

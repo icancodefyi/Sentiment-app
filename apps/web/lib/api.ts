@@ -1,8 +1,9 @@
+import type { AnalyzeResponse } from "./analyze-types";
 import type { IngestResponse } from "./ingest-types";
 
 const base = () =>
   (typeof process !== "undefined" && process.env.NEXT_PUBLIC_API_URL) ||
-  "http://127.0.0.1:8000";
+  "http://127.0.0.1:8787";
 
 function formatErrorBody(text: string, statusText: string): string {
   try {
@@ -26,7 +27,11 @@ async function parseJson<T>(res: Response): Promise<T> {
   }
 }
 
-export async function fetchHealth(): Promise<{ status: string }> {
+export async function fetchHealth(): Promise<{
+  status: string;
+  app?: string;
+  api_version?: string;
+}> {
   const res = await fetch(`${base()}/health`, { cache: "no-store" });
   if (!res.ok) throw new Error("health check failed");
   return parseJson(res);
@@ -56,6 +61,19 @@ export async function ingestChat(messages: { role?: string | null; content: stri
     throw new Error(formatErrorBody(err, res.statusText));
   }
   return parseJson<IngestResponse>(res);
+}
+
+export async function analyzeCommunication(text: string): Promise<AnalyzeResponse> {
+  const res = await fetch(`${base()}/api/v1/analyze`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(formatErrorBody(err, res.statusText));
+  }
+  return parseJson<AnalyzeResponse>(res);
 }
 
 export async function ingestImage(file: File, contextText?: string) {

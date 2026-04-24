@@ -9,7 +9,7 @@ export function StatusBadge() {
 
   useEffect(() => {
     fetchHealth()
-      .then((h) => setOk(h.status === "ok"))
+      .then((h) => setOk(h.status === "ok" && h.app === "sentilx-api"))
       .catch(() => setOk(false));
   }, []);
 
