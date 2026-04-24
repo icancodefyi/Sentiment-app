@@ -10,7 +10,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from app.db.mongo import get_mongo_uri, ping_mongo
-from app.services.email_service import smtp_configured
 from app.routers.analyze import router as analyze_router
 from app.routers.dashboard import router as dashboard_router
 from app.routers.exports import router as exports_router
@@ -50,7 +49,6 @@ def api_v1_index() -> dict[str, object]:
         "analyze": "POST /api/v1/analyze (sentiment, tone, intent, risk, signals)",
         "records": "POST/GET /api/v1/records (MongoDB)",
         "export_pdf": "GET /api/v1/records/{id}/export/pdf",
-        "export_email": "POST /api/v1/records/{id}/export/email",
         "dashboard": "GET /api/v1/dashboard/summary?period_days=30",
         "docs": "/docs",
     }
@@ -72,7 +70,6 @@ def health() -> dict[str, str]:
         h["mongo"] = "unconfigured"
     else:
         h["mongo"] = "ok" if ping_mongo() else "error"
-    h["smtp"] = "unconfigured" if not smtp_configured() else "ok"
     return h
 
 

@@ -5,15 +5,8 @@ import { useDropzone } from "react-dropzone";
 import { AnalysisCard } from "@/components/analysis/AnalysisCard";
 import { RecentRecords } from "@/components/history/RecentRecords";
 import { Header } from "@/components/shell/Header";
-import {
-  analyzeCommunication,
-  downloadRecordPdf,
-  emailRecordPdf,
-  ingestChat,
-  ingestImage,
-  ingestText,
-  saveAnalysisRecord,
-} from "@/lib/api";
+import { analyzeCommunication, downloadRecordPdf, ingestChat, ingestImage, ingestText, saveAnalysisRecord } from "@/lib/api";
+import { openReportInMailApp } from "@/lib/mailtoReport";
 import type { AnalyzeResponse } from "@/lib/analyze-types";
 import type { IngestResponse } from "@/lib/ingest-types";
 import styles from "./ingest.module.css";
@@ -46,7 +39,7 @@ export function IngestView() {
   const [recordRefresh, setRecordRefresh] = useState(0);
   const [savedRecordId, setSavedRecordId] = useState<string | null>(null);
   const [exportMsg, setExportMsg] = useState<string | null>(null);
-  const [exportBusy, setExportBusy] = useState<"dl" | "em" | null>(null);
+  const [pdfBusy, setPdfBusy] = useState(false);
   const [emailOverride, setEmailOverride] = useState("");
 
   const onDrop = useCallback((accepted: File[]) => {
@@ -69,39 +62,30 @@ export function IngestView() {
 
   const onDownloadPdf = useCallback(async () => {
     if (!savedRecordId) return;
-    setExportBusy("dl");
+    setPdfBusy(true);
     setExportMsg(null);
     try {
       await downloadRecordPdf(savedRecordId, `sentinelx-${savedRecordId}.pdf`);
-      setExportMsg("PDF downloaded to your device.");
+      setExportMsg("PDF saved to your device. Attach it if you use “Open in email app”.");
     } catch (e) {
       setExportMsg(e instanceof Error ? e.message : "Download failed");
     } finally {
-      setExportBusy(null);
+      setPdfBusy(false);
     }
   }, [savedRecordId]);
 
-  const onEmailPdf = useCallback(async () => {
-    if (!savedRecordId) return;
-    setExportBusy("em");
+  const onOpenInMail = useCallback(() => {
+    if (!savedRecordId || !analysis) return;
     setExportMsg(null);
-    try {
-      const to = emailOverride.trim() || undefined;
-      const r = await emailRecordPdf(
-        savedRecordId,
-        to ? { to } : undefined,
-      );
-      setExportMsg(`Emailed to ${r.to}.`);
-    } catch (e) {
-      if (e instanceof Error && e.message === "smtp_unconfigured")
-        setExportMsg(
-          "Email needs SMTP: set SMTP_HOST, SMTP_USER, REPORT_EMAIL_TO in apps/api/.env.",
-        );
-      else setExportMsg(e instanceof Error ? e.message : "Email failed");
-    } finally {
-      setExportBusy(null);
-    }
-  }, [emailOverride, savedRecordId]);
+    openReportInMailApp(
+      savedRecordId,
+      analysis,
+      emailOverride.trim() || undefined,
+    );
+    setExportMsg(
+      "If nothing opened, your browser or OS may be blocking mailto: links. Check default mail app (Windows: Settings → Apps).",
+    );
+  }, [analysis, emailOverride, savedRecordId]);
 
   const removeFile = () => {
     setFile(null);
@@ -395,7 +379,8 @@ export function IngestView() {
                     <div className={styles.exportTop}>
                       <span className={styles.exportBadge}>Reports</span>
                       <span className={styles.exportHint}>
-                        5.10–5.11: PDF and email use the server (SMTP in apps/api/.env).
+                        5.10: PDF from API. 5.11: opens your mail app (mailto:) — no passwords;
+                        attach the PDF yourself if you need a file.
                       </span>
                     </div>
                     <div className={styles.exportRow}>
@@ -403,9 +388,9 @@ export function IngestView() {
                         type="button"
                         className={styles.exportBtn}
                         onClick={onDownloadPdf}
-                        disabled={exportBusy !== null}
+                        disabled={pdfBusy}
                       >
-                        {exportBusy === "dl" ? "Preparing…" : "Download PDF report"}
+                        {pdfBusy ? "Preparing…" : "Download PDF report"}
                       </button>
                       <div className={styles.emailField}>
                         <input
@@ -413,16 +398,15 @@ export function IngestView() {
                           className={styles.emailInput}
                           value={emailOverride}
                           onChange={(e) => setEmailOverride(e.target.value)}
-                          placeholder="Override recipient (optional)"
+                          placeholder="To: optional; leave blank to pick in the mail app"
                           autoComplete="off"
                         />
                         <button
                           type="button"
                           className={styles.exportBtnSecc}
-                          onClick={onEmailPdf}
-                          disabled={exportBusy !== null}
+                          onClick={onOpenInMail}
                         >
-                          {exportBusy === "em" ? "Sending…" : "Email PDF"}
+                          Open in email app
                         </button>
                       </div>
                     </div>

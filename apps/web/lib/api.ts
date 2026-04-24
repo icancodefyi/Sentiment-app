@@ -34,7 +34,6 @@ export async function fetchHealth(): Promise<{
   app?: string;
   api_version?: string;
   mongo?: string;
-  smtp?: string;
 }> {
   const res = await fetch(`${base()}/health`, { cache: "no-store" });
   if (!res.ok) throw new Error("health check failed");
@@ -104,31 +103,6 @@ export async function downloadRecordPdf(recordId: string, filename: string) {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
-}
-
-/**
- * 5.11 — Email PDF. Requires SMTP* + REPORT_EMAIL_TO (or `to` in body) in apps/api/.env.
- */
-export async function emailRecordPdf(recordId: string, opts?: { to?: string; message?: string }) {
-  const res = await fetch(
-    `${base()}/api/v1/records/${encodeURIComponent(recordId)}/export/email`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...(opts?.to ? { to: opts.to } : {}),
-        ...(opts?.message ? { message: opts.message } : {}),
-      }),
-    },
-  );
-  if (res.status === 503) {
-    throw new Error("smtp_unconfigured");
-  }
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(formatErrorBody(err, res.statusText));
-  }
-  return parseJson<{ ok: boolean; to: string }>(res);
 }
 
 export async function fetchDashboardSummary(periodDays = 30): Promise<DashboardSummary> {
