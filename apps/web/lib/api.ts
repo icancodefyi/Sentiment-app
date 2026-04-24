@@ -1,5 +1,6 @@
 import type { AnalyzeResponse } from "./analyze-types";
 import type { IngestResponse } from "./ingest-types";
+import type { RecordListItem, SaveRecordResult } from "./record-types";
 
 const base = () =>
   (typeof process !== "undefined" && process.env.NEXT_PUBLIC_API_URL) ||
@@ -61,6 +62,39 @@ export async function ingestChat(messages: { role?: string | null; content: stri
     throw new Error(formatErrorBody(err, res.statusText));
   }
   return parseJson<IngestResponse>(res);
+}
+
+/**
+ * Persists a completed run to MongoDB (API `apps/api/.env`: MONGODB_URI or mongodb_uri).
+ * 503 = DB not configured on the server; caller may ignore.
+ */
+export async function saveAnalysisRecord(
+  ingest: IngestResponse,
+  analysis: AnalyzeResponse,
+): Promise<SaveRecordResult> {
+  const res = await fetch(`${base()}/api/v1/records`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ingest, analysis }),
+  });
+  if (res.status === 503) {
+    throw new Error("database_unconfigured");
+  }
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(formatErrorBody(err, res.statusText));
+  }
+  return parseJson<SaveRecordResult>(res);
+}
+
+export async function listAnalysisRecords(limit = 8): Promise<RecordListItem[]> {
+  const res = await fetch(`${base()}/api/v1/records?limit=${limit}`, { cache: "no-store" });
+  if (res.status === 503) return [];
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(formatErrorBody(err, res.statusText));
+  }
+  return parseJson<RecordListItem[]>(res);
 }
 
 export async function analyzeCommunication(text: string): Promise<AnalyzeResponse> {

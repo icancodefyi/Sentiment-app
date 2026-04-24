@@ -3,8 +3,15 @@
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { AnalysisCard } from "@/components/analysis/AnalysisCard";
+import { RecentRecords } from "@/components/history/RecentRecords";
 import { Header } from "@/components/shell/Header";
-import { analyzeCommunication, ingestChat, ingestImage, ingestText } from "@/lib/api";
+import {
+  analyzeCommunication,
+  ingestChat,
+  ingestImage,
+  ingestText,
+  saveAnalysisRecord,
+} from "@/lib/api";
 import type { AnalyzeResponse } from "@/lib/analyze-types";
 import type { IngestResponse } from "@/lib/ingest-types";
 import styles from "./ingest.module.css";
@@ -33,6 +40,8 @@ export function IngestView() {
   const [analysis, setAnalysis] = useState<AnalyzeResponse | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [persistNote, setPersistNote] = useState<"saved" | "nodb" | "err" | null>(null);
+  const [recordRefresh, setRecordRefresh] = useState(0);
 
   const onDrop = useCallback((accepted: File[]) => {
     if (accepted.length > 0) {
@@ -63,6 +72,7 @@ export function IngestView() {
     setResult(null);
     setAnalysis(null);
     setAnalysisError(null);
+    setPersistNote(null);
     if (mode === "text" && !text.trim()) {
       setError("Please enter some text.");
       return;
@@ -97,8 +107,18 @@ export function IngestView() {
       if (cleaned.length > 0) {
         setAnalysisLoading(true);
         try {
-          setAnalysis(await analyzeCommunication(cleaned));
+          const a = await analyzeCommunication(cleaned);
+          setAnalysis(a);
           setAnalysisError(null);
+          try {
+            await saveAnalysisRecord(ing, a);
+            setPersistNote("saved");
+            setRecordRefresh((k) => k + 1);
+          } catch (se) {
+            if (se instanceof Error && se.message === "database_unconfigured")
+              setPersistNote("nodb");
+            else setPersistNote("err");
+          }
         } catch (ae) {
           setAnalysis(null);
           setAnalysisError(ae instanceof Error ? ae.message : "Analysis failed");
@@ -134,7 +154,10 @@ export function IngestView() {
                 model + rule signals.
                 Put <span className={styles.inlineCode}>GROQ_API_KEY</span> in{" "}
                 <span className={styles.inlineCode}>apps/api/.env</span> (not the web
-                bundle).
+                bundle). <strong>MongoDB</strong> URI belongs only in{" "}
+                <span className={styles.inlineCode}>apps/api/.env</span> as{" "}
+                <span className={styles.inlineCode}>MONGODB_URI</span> or{" "}
+                <span className={styles.inlineCode}>mongodb_uri</span>.
               </p>
             </div>
 
@@ -301,11 +324,32 @@ export function IngestView() {
                   loading={analysisLoading}
                   error={analysisError}
                 />
+                {analysis &&
+                !analysisLoading &&
+                !analysisError &&
+                (persistNote === "saved" || persistNote === "nodb" || persistNote === "err") ? (
+                  <p
+                    className={styles.persistLine}
+                    data-persist={persistNote}
+                    role="status"
+                  >
+                    {persistNote === "saved"
+                      ? "Run saved to MongoDB."
+                      : null}
+                    {persistNote === "nodb"
+                      ? "History not stored (add MONGODB_URI or mongodb_uri to apps/api/.env and restart the API)."
+                      : null}
+                    {persistNote === "err"
+                      ? "Could not save to MongoDB (check server logs and URI)."
+                      : null}
+                  </p>
+                ) : null}
                 <IngestResult data={result} />
               </div>
             ) : (
               <EmptyState />
             )}
+            <RecentRecords refreshKey={recordRefresh} />
           </div>
         </div>
       </main>

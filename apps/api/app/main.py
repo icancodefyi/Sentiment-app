@@ -9,8 +9,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+from app.db.mongo import get_mongo_uri, ping_mongo
 from app.routers.analyze import router as analyze_router
 from app.routers.ingest import router as ingest_router
+from app.routers.records import router as records_router
 
 _env = Path(__file__).resolve().parent.parent / ".env"
 load_dotenv(_env)
@@ -27,6 +29,7 @@ app.add_middleware(
 
 app.include_router(ingest_router)
 app.include_router(analyze_router)
+app.include_router(records_router)
 
 
 @app.get("/api/v1")
@@ -40,6 +43,7 @@ def api_v1_index() -> dict[str, object]:
             "image": "POST /api/v1/ingest/image (multipart)",
         },
         "analyze": "POST /api/v1/analyze (sentiment, tone, intent, risk, signals)",
+        "records": "POST/GET /api/v1/records (MongoDB)",
         "docs": "/docs",
     }
 
@@ -51,7 +55,16 @@ class SentimentRequest(BaseModel):
 @app.get("/health")
 def health() -> dict[str, str]:
     # If this shape is missing in the browser, you are not hitting this FastAPI app.
-    return {"status": "ok", "app": "sentilx-api", "api_version": "0.1"}
+    h: dict[str, str] = {
+        "status": "ok",
+        "app": "sentilx-api",
+        "api_version": "0.1",
+    }
+    if not get_mongo_uri():
+        h["mongo"] = "unconfigured"
+    else:
+        h["mongo"] = "ok" if ping_mongo() else "error"
+    return h
 
 
 @app.post("/api/sentiment")

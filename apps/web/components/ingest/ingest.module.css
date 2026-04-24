@@ -35,6 +35,26 @@
   padding-bottom: 8px;
 }
 
+.persistLine {
+  font-size: 0.75rem;
+  margin: -8px 0 0 0;
+  line-height: 1.45;
+  color: var(--ink-30);
+}
+
+.persistLine[data-persist="saved"] {
+  color: #1a7a4a;
+  font-weight: 600;
+}
+
+.persistLine[data-persist="nodb"] {
+  color: var(--ink-40);
+}
+
+.persistLine[data-persist="err"] {
+  color: #a93226;
+}
+
 .pageIntro {
   display: flex;
   flex-direction: column;
