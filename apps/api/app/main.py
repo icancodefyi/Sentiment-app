@@ -2,11 +2,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+from app.routers.ingest import router as ingest_router
+
 app = FastAPI(title="Sentilx API", version="0.1.0")
-
-
-class SentimentRequest(BaseModel):
-    text: str = Field(..., min_length=1, description="Text to analyze")
 
 app.add_middleware(
     CORSMiddleware,
@@ -16,6 +14,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(ingest_router)
+
+
+class SentimentRequest(BaseModel):
+    text: str = Field(..., min_length=1, description="Text to analyze")
+
 
 @app.get("/health")
 def health() -> dict[str, str]:
@@ -24,11 +28,11 @@ def health() -> dict[str, str]:
 
 @app.post("/api/sentiment")
 def analyze_sentiment(body: SentimentRequest) -> dict:
-    """Placeholder: replace with your model or service integration."""
+    """Legacy placeholder; Phase 2+ will replace with real analysis."""
     text = body.text.strip()
     return {
         "text": text[:500],
         "label": "neutral",
         "score": 0.0,
-        "note": "Replace this endpoint with real sentiment analysis.",
+        "note": "Use /api/v1/ingest/* for Phase 1 ingest + OCR.",
     }
