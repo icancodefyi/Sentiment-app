@@ -1,8 +1,19 @@
+from pathlib import Path
+
+from app.platform_io import ensure_utf8_stdio
+
+ensure_utf8_stdio()
+
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+from app.routers.analyze import router as analyze_router
 from app.routers.ingest import router as ingest_router
+
+_env = Path(__file__).resolve().parent.parent / ".env"
+load_dotenv(_env)
 
 app = FastAPI(title="Sentilx API", version="0.1.0")
 
@@ -15,6 +26,22 @@ app.add_middleware(
 )
 
 app.include_router(ingest_router)
+app.include_router(analyze_router)
+
+
+@app.get("/api/v1")
+def api_v1_index() -> dict[str, object]:
+    """Quick sanity check when debugging 404s (wrong process / wrong port)."""
+    return {
+        "service": "sentilx-api",
+        "ingest": {
+            "text": "POST /api/v1/ingest/text",
+            "chat": "POST /api/v1/ingest/chat",
+            "image": "POST /api/v1/ingest/image (multipart)",
+        },
+        "analyze": "POST /api/v1/analyze",
+        "docs": "/docs",
+    }
 
 
 class SentimentRequest(BaseModel):
@@ -23,7 +50,8 @@ class SentimentRequest(BaseModel):
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok"}
+    # If this shape is missing in the browser, you are not hitting this FastAPI app.
+    return {"status": "ok", "app": "sentilx-api", "api_version": "0.1"}
 
 
 @app.post("/api/sentiment")

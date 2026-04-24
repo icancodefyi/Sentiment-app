@@ -4,6 +4,7 @@ import io
 from functools import lru_cache
 from typing import Any
 
+from app.platform_io import ensure_utf8_stdio
 from PIL import Image, UnidentifiedImageError
 
 
@@ -13,6 +14,7 @@ class OCRNotAvailableError(RuntimeError):
 
 @lru_cache(maxsize=1)
 def _reader():
+    ensure_utf8_stdio()
     try:
         import easyocr  # type: ignore[import-untyped]
     except ImportError as e:  # pragma: no cover
