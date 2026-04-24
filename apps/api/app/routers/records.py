@@ -3,11 +3,10 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
-from bson import ObjectId
-from bson.errors import InvalidId
 from fastapi import APIRouter, HTTPException, Query
 
 from app.db.mongo import get_mongo_uri, get_records_collection
+from app.db.record_access import get_record_row_by_id
 from app.schemas.record import (
     FullRecordOut,
     RecordListItem,
@@ -89,12 +88,7 @@ def list_records(
 @router.get("/records/{rec_id}", response_model=FullRecordOut)
 def get_record(rec_id: str) -> FullRecordOut:
     _require_mongo()
-    col = get_records_collection()
-    try:
-        oid = ObjectId(rec_id)
-    except InvalidId as e:
-        raise HTTPException(status_code=400, detail="Invalid record id") from e
-    row = col.find_one({"_id": oid})
+    row = get_record_row_by_id(rec_id)
     if not row:
         raise HTTPException(status_code=404, detail="Record not found")
     return FullRecordOut(

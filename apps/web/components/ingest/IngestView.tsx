@@ -7,6 +7,8 @@ import { RecentRecords } from "@/components/history/RecentRecords";
 import { Header } from "@/components/shell/Header";
 import {
   analyzeCommunication,
+  downloadRecordPdf,
+  emailRecordPdf,
   ingestChat,
   ingestImage,
   ingestText,
@@ -42,6 +44,10 @@ export function IngestView() {
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [persistNote, setPersistNote] = useState<"saved" | "nodb" | "err" | null>(null);
   const [recordRefresh, setRecordRefresh] = useState(0);
+  const [savedRecordId, setSavedRecordId] = useState<string | null>(null);
+  const [exportMsg, setExportMsg] = useState<string | null>(null);
+  const [exportBusy, setExportBusy] = useState<"dl" | "em" | null>(null);
+  const [emailOverride, setEmailOverride] = useState("");
 
   const onDrop = useCallback((accepted: File[]) => {
     if (accepted.length > 0) {
@@ -61,6 +67,42 @@ export function IngestView() {
 
   const charCount = mode === "text" ? text.length : chatText.length;
 
+  const onDownloadPdf = useCallback(async () => {
+    if (!savedRecordId) return;
+    setExportBusy("dl");
+    setExportMsg(null);
+    try {
+      await downloadRecordPdf(savedRecordId, `sentinelx-${savedRecordId}.pdf`);
+      setExportMsg("PDF downloaded to your device.");
+    } catch (e) {
+      setExportMsg(e instanceof Error ? e.message : "Download failed");
+    } finally {
+      setExportBusy(null);
+    }
+  }, [savedRecordId]);
+
+  const onEmailPdf = useCallback(async () => {
+    if (!savedRecordId) return;
+    setExportBusy("em");
+    setExportMsg(null);
+    try {
+      const to = emailOverride.trim() || undefined;
+      const r = await emailRecordPdf(
+        savedRecordId,
+        to ? { to } : undefined,
+      );
+      setExportMsg(`Emailed to ${r.to}.`);
+    } catch (e) {
+      if (e instanceof Error && e.message === "smtp_unconfigured")
+        setExportMsg(
+          "Email needs SMTP: set SMTP_HOST, SMTP_USER, REPORT_EMAIL_TO in apps/api/.env.",
+        );
+      else setExportMsg(e instanceof Error ? e.message : "Email failed");
+    } finally {
+      setExportBusy(null);
+    }
+  }, [emailOverride, savedRecordId]);
+
   const removeFile = () => {
     setFile(null);
     if (preview) URL.revokeObjectURL(preview);
@@ -73,6 +115,8 @@ export function IngestView() {
     setAnalysis(null);
     setAnalysisError(null);
     setPersistNote(null);
+    setSavedRecordId(null);
+    setExportMsg(null);
     if (mode === "text" && !text.trim()) {
       setError("Please enter some text.");
       return;
@@ -111,13 +155,15 @@ export function IngestView() {
           setAnalysis(a);
           setAnalysisError(null);
           try {
-            await saveAnalysisRecord(ing, a);
+            const sr = await saveAnalysisRecord(ing, a);
+            setSavedRecordId(sr.id);
             setPersistNote("saved");
             setRecordRefresh((k) => k + 1);
           } catch (se) {
             if (se instanceof Error && se.message === "database_unconfigured")
               setPersistNote("nodb");
             else setPersistNote("err");
+            setSavedRecordId(null);
           }
         } catch (ae) {
           setAnalysis(null);
@@ -343,6 +389,45 @@ export function IngestView() {
                       ? "Could not save to MongoDB (check server logs and URI)."
                       : null}
                   </p>
+                ) : null}
+                {savedRecordId && persistNote === "saved" && !analysisLoading && !analysisError ? (
+                  <div className={styles.exportBar}>
+                    <div className={styles.exportTop}>
+                      <span className={styles.exportBadge}>Reports</span>
+                      <span className={styles.exportHint}>
+                        5.10–5.11: PDF and email use the server (SMTP in apps/api/.env).
+                      </span>
+                    </div>
+                    <div className={styles.exportRow}>
+                      <button
+                        type="button"
+                        className={styles.exportBtn}
+                        onClick={onDownloadPdf}
+                        disabled={exportBusy !== null}
+                      >
+                        {exportBusy === "dl" ? "Preparing…" : "Download PDF report"}
+                      </button>
+                      <div className={styles.emailField}>
+                        <input
+                          type="email"
+                          className={styles.emailInput}
+                          value={emailOverride}
+                          onChange={(e) => setEmailOverride(e.target.value)}
+                          placeholder="Override recipient (optional)"
+                          autoComplete="off"
+                        />
+                        <button
+                          type="button"
+                          className={styles.exportBtnSecc}
+                          onClick={onEmailPdf}
+                          disabled={exportBusy !== null}
+                        >
+                          {exportBusy === "em" ? "Sending…" : "Email PDF"}
+                        </button>
+                      </div>
+                    </div>
+                    {exportMsg ? <p className={styles.exportMsg}>{exportMsg}</p> : null}
+                  </div>
                 ) : null}
                 <IngestResult data={result} />
               </div>

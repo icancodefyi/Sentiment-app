@@ -1,22 +1,38 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import styles from "./header.module.css";
 import { StatusBadge } from "./StatusBadge";
 
 export function Header() {
+  const path = usePathname();
+  const isIngest = path === "/" || path === "";
+  const isDash = path?.startsWith("/dashboard") ?? false;
+
   return (
     <header className={styles.header}>
       <div className={styles.headerInner}>
-        <div className={styles.brandName}>SentinelX</div>
+        <Link href="/" className={styles.brandName}>
+          SentinelX
+        </Link>
         <nav className={styles.nav} aria-label="Primary">
-          <button type="button" className={`${styles.navBtn} ${styles.navBtnActive}`}>
+          <Link
+            href="/"
+            className={`${styles.navBtn} ${isIngest ? styles.navBtnActive : ""}`}
+            prefetch
+          >
             Ingest
-            <span className={styles.navIndicator} />
-          </button>
-          <button type="button" className={styles.navBtn} disabled title="Phase 7">
+            {isIngest ? <span className={styles.navIndicator} /> : null}
+          </Link>
+          <Link
+            href="/dashboard"
+            className={`${styles.navBtn} ${isDash ? styles.navBtnActive : ""}`}
+            prefetch
+          >
             Dashboard
-          </button>
-          <button type="button" className={styles.navBtn} disabled title="Phase 5+">
-            Cases
-          </button>
+            {isDash ? <span className={styles.navIndicator} /> : null}
+          </Link>
         </nav>
         <div className={styles.status}>
           <StatusBadge />

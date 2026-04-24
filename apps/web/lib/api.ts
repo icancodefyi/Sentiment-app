@@ -1,5 +1,6 @@
 import type { AnalyzeResponse } from "./analyze-types";
 import type { IngestResponse } from "./ingest-types";
+import type { DashboardSummary } from "./dashboard-types";
 import type { RecordListItem, SaveRecordResult } from "./record-types";
 
 const base = () =>
@@ -32,6 +33,8 @@ export async function fetchHealth(): Promise<{
   status: string;
   app?: string;
   api_version?: string;
+  mongo?: string;
+  smtp?: string;
 }> {
   const res = await fetch(`${base()}/health`, { cache: "no-store" });
   if (!res.ok) throw new Error("health check failed");
@@ -85,6 +88,62 @@ export async function saveAnalysisRecord(
     throw new Error(formatErrorBody(err, res.statusText));
   }
   return parseJson<SaveRecordResult>(res);
+}
+
+export async function downloadRecordPdf(recordId: string, filename: string) {
+  const res = await fetch(`${base()}/api/v1/records/${encodeURIComponent(recordId)}/export/pdf`);
+  if (res.status === 404) throw new Error("Record not found or Mongo unavailable");
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(formatErrorBody(err, res.statusText));
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * 5.11 — Email PDF. Requires SMTP* + REPORT_EMAIL_TO (or `to` in body) in apps/api/.env.
+ */
+export async function emailRecordPdf(recordId: string, opts?: { to?: string; message?: string }) {
+  const res = await fetch(
+    `${base()}/api/v1/records/${encodeURIComponent(recordId)}/export/email`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...(opts?.to ? { to: opts.to } : {}),
+        ...(opts?.message ? { message: opts.message } : {}),
+      }),
+    },
+  );
+  if (res.status === 503) {
+    throw new Error("smtp_unconfigured");
+  }
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(formatErrorBody(err, res.statusText));
+  }
+  return parseJson<{ ok: boolean; to: string }>(res);
+}
+
+export async function fetchDashboardSummary(periodDays = 30): Promise<DashboardSummary> {
+  const res = await fetch(
+    `${base()}/api/v1/dashboard/summary?period_days=${encodeURIComponent(periodDays)}`,
+    { cache: "no-store" },
+  );
+  if (res.status === 503) {
+    throw new Error("dashboard_unavailable");
+  }
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(formatErrorBody(err, res.statusText));
+  }
+  return parseJson(res);
 }
 
 export async function listAnalysisRecords(limit = 8): Promise<RecordListItem[]> {
