@@ -6,7 +6,7 @@ import { AnalysisCard } from "@/components/analysis/AnalysisCard";
 import { RecentRecords } from "@/components/history/RecentRecords";
 import { Header } from "@/components/shell/Header";
 import { analyzeCommunication, downloadRecordPdf, ingestChat, ingestImage, ingestText, ingestXPost, saveAnalysisRecord } from "@/lib/api";
-import { openReportInMailApp, openReportInWebmail } from "@/lib/mailtoReport";
+import { openReportInWebmail } from "@/lib/mailtoReport";
 import type { AnalyzeResponse } from "@/lib/analyze-types";
 import type { IngestResponse } from "@/lib/ingest-types";
 import styles from "./ingest.module.css";
@@ -69,26 +69,13 @@ export function IngestView() {
     setExportMsg(null);
     try {
       await downloadRecordPdf(savedRecordId, `sentinelx-${savedRecordId}.pdf`);
-      setExportMsg("PDF saved to your device. Attach it if you use “Open in email app”.");
+      setExportMsg("PDF saved to your device. Attach it in Gmail draft if needed.");
     } catch (e) {
       setExportMsg(e instanceof Error ? e.message : "Download failed");
     } finally {
       setPdfBusy(false);
     }
   }, [savedRecordId]);
-
-  const onOpenInMail = useCallback(() => {
-    if (!savedRecordId || !analysis) return;
-    setExportMsg(null);
-    openReportInMailApp(
-      savedRecordId,
-      analysis,
-      emailOverride.trim() || undefined,
-    );
-    setExportMsg(
-      "If nothing opened, set your default Email app in Windows Settings and ensure MAILTO is mapped to it (Settings -> Apps -> Default apps).",
-    );
-  }, [analysis, emailOverride, savedRecordId]);
 
   const onOpenWebmail = useCallback(() => {
     if (!savedRecordId || !analysis) return;
@@ -444,16 +431,9 @@ export function IngestView() {
                           className={styles.emailInput}
                           value={emailOverride}
                           onChange={(e) => setEmailOverride(e.target.value)}
-                          placeholder="To: optional; leave blank to pick in the mail app"
+                          placeholder="To: optional; prefilled in Gmail draft"
                           autoComplete="off"
                         />
-                        <button
-                          type="button"
-                          className={styles.exportBtnSecc}
-                          onClick={onOpenInMail}
-                        >
-                          Open email app
-                        </button>
                         <button
                           type="button"
                           className={styles.exportBtnSecc}
