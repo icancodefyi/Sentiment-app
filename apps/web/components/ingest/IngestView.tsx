@@ -387,6 +387,9 @@ export function IngestView() {
                   loading={analysisLoading}
                   error={analysisError}
                 />
+                {analysis && !analysisLoading && !analysisError ? (
+                  <EvidenceExplainer analysis={analysis} ingest={result} />
+                ) : null}
                 {analysis &&
                 !analysisLoading &&
                 !analysisError &&
@@ -568,4 +571,186 @@ function IngestResult({ data }: { data: IngestResponse }) {
       </div>
     </details>
   );
+}
+
+function EvidenceExplainer({
+  analysis,
+  ingest,
+}: {
+  analysis: AnalyzeResponse;
+  ingest: IngestResponse;
+}) {
+  const topSignals = analysis.signals.slice(0, 8);
+  const topEntities = ingest.entities.slice(0, 8);
+  const certainty = Math.max(
+    0,
+    Math.min(100, (analysis.intent.confidence + analysis.sentiment.confidence) / 2),
+  );
+  const uncertainty = Math.max(0, 100 - certainty);
+  const snippets = buildSuspiciousSnippets(ingest.cleaned_text, topEntities, topSignals);
+
+  return (
+    <section className={styles.evidenceCard} aria-label="Evidence backed explanations">
+      <div className={styles.evidenceHead}>
+        <h3 className={styles.evidenceTitle}>
+          {analysis.risk.band === "high" ? "Why high risk?" : "Why this verdict?"}
+        </h3>
+        <span className={styles.evidenceBand} data-band={analysis.risk.band}>
+          {analysis.risk.band} risk · {analysis.risk.score.toFixed(0)}/100
+        </span>
+      </div>
+
+      <div className={styles.evidenceSection}>
+        <p className={styles.evidenceLabel}>Triggered signals</p>
+        {topSignals.length > 0 ? (
+          <div className={styles.evidenceChips}>
+            {topSignals.map((s) => (
+              <span key={s} className={styles.evidenceChip}>
+                {humanizeSignalText(s)}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className={styles.evidenceMuted}>No explicit signal flags were returned.</p>
+        )}
+      </div>
+
+      <div className={styles.evidenceSection}>
+        <p className={styles.evidenceLabel}>Extracted entities</p>
+        {topEntities.length > 0 ? (
+          <div className={styles.evidenceChips}>
+            {topEntities.map((e, i) => (
+              <span key={`${e.type}-${e.value}-${i}`} className={styles.evidenceChip}>
+                <strong>{e.type}</strong>: {e.value}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className={styles.evidenceMuted}>No URL/email/phone/money entities detected.</p>
+        )}
+      </div>
+
+      <div className={styles.evidenceSection}>
+        <p className={styles.evidenceLabel}>Top suspicious spans</p>
+        {snippets.length > 0 ? (
+          <div className={styles.snippetList}>
+            {snippets.map((s, i) => (
+              <p key={i} className={styles.snippetItem}>
+                {highlightSnippet(s.text, s.terms)}
+              </p>
+            ))}
+          </div>
+        ) : (
+          <p className={styles.evidenceMuted}>
+            No strong suspicious span was isolated from this text.
+          </p>
+        )}
+      </div>
+
+      <div className={styles.evidenceSection}>
+        <p className={styles.evidenceLabel}>Confidence vs uncertainty</p>
+        <div className={styles.confRow}>
+          <div className={styles.confTrack}>
+            <div className={styles.confFill} style={{ width: `${certainty}%` }} />
+          </div>
+          <span className={styles.confValue}>{certainty.toFixed(0)}% confident</span>
+          <span className={styles.confMuted}>{uncertainty.toFixed(0)}% uncertain</span>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function buildSuspiciousSnippets(
+  cleanedText: string,
+  entities: IngestResponse["entities"],
+  signals: string[],
+): Array<{ text: string; terms: string[] }> {
+  if (!cleanedText.trim()) return [];
+  const signalTerms = signals
+    .flatMap((s) => s.split(/[_\-\s]+/g))
+    .map((s) => s.trim().toLowerCase())
+    .filter((s) => s.length >= 4);
+  const entityTerms = entities
+    .map((e) => e.value.trim())
+    .filter((v) => v.length >= 3)
+    .slice(0, 8);
+  const baseTerms = [
+    "urgent",
+    "immediately",
+    "otp",
+    "verify",
+    "bank",
+    "payment",
+    "transfer",
+    "refund",
+    "suspend",
+    "account",
+    "click",
+    "link",
+  ];
+  const allTerms = Array.from(
+    new Set([...signalTerms, ...entityTerms.map((v) => v.toLowerCase()), ...baseTerms]),
+  );
+  const candidates = cleanedText
+    .split(/[\n\r]+|(?<=[.!?])\s+/g)
+    .map((s) => s.trim())
+    .filter((s) => s.length >= 20)
+    .slice(0, 80);
+
+  const scored = candidates
+    .map((sentence) => {
+      const l = sentence.toLowerCase();
+      let score = 0;
+      const matched: string[] = [];
+      for (const t of allTerms) {
+        if (t && l.includes(t)) {
+          score += entityTerms.some((ev) => ev.toLowerCase() === t) ? 4 : 2;
+          matched.push(t);
+        }
+      }
+      if (/\b(pay|send|transfer|share|verify|confirm)\b/i.test(sentence)) score += 2;
+      if (/\b(now|urgent|immediately|asap|today)\b/i.test(sentence)) score += 2;
+      return { sentence, score, matched: Array.from(new Set(matched)) };
+    })
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  const picked: Array<{ text: string; terms: string[] }> = [];
+  const seen = new Set<string>();
+  for (const row of scored) {
+    const key = row.sentence.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    picked.push({
+      text: row.sentence.length > 240 ? `${row.sentence.slice(0, 240)}…` : row.sentence,
+      terms: row.matched.slice(0, 6),
+    });
+    if (picked.length >= 3) break;
+  }
+  return picked;
+}
+
+function highlightSnippet(text: string, terms: string[]) {
+  if (!terms.length) return text;
+  const escaped = terms.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).filter(Boolean);
+  if (!escaped.length) return text;
+  const re = new RegExp(`(${escaped.join("|")})`, "ig");
+  const parts = text.split(re);
+  const termSet = new Set(terms.map((t) => t.toLowerCase()));
+  return parts.map((part, i) =>
+    termSet.has(part.toLowerCase()) ? (
+      <mark key={`${part}-${i}`} className={styles.snippetMark}>
+        {part}
+      </mark>
+    ) : (
+      <span key={`${part}-${i}`}>{part}</span>
+    ),
+  );
+}
+
+function humanizeSignalText(s: string) {
+  const t = s.replace(/[-_]+/g, " ").trim();
+  if (!t) return s;
+  return t.replace(/\b\w/g, (c) => c.toUpperCase());
 }
