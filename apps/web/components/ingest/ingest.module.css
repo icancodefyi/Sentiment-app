@@ -38,6 +38,10 @@
   padding-bottom: 8px;
 }
 
+.historySection {
+  margin-top: 28px;
+}
+
 .persistLine {
   font-size: 0.75rem;
   margin: -8px 0 0 0;
@@ -506,6 +510,31 @@
   overflow: hidden;
   box-shadow: var(--shadow-md);
   animation: slideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.auditCard {
+  border: 1px solid var(--ink-10);
+  border-radius: var(--radius-xl);
+  background: white;
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+.auditSummary {
+  list-style: none;
+  cursor: pointer;
+  padding: 12px 16px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-60);
+  background: var(--paper);
+  border-bottom: 1px solid var(--ink-10);
+}
+
+.auditSummary::-webkit-details-marker {
+  display: none;
 }
 
 @keyframes slideIn {

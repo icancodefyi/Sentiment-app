@@ -6,7 +6,7 @@ import { AnalysisCard } from "@/components/analysis/AnalysisCard";
 import { RecentRecords } from "@/components/history/RecentRecords";
 import { Header } from "@/components/shell/Header";
 import { analyzeCommunication, downloadRecordPdf, ingestChat, ingestImage, ingestText, ingestXPost, saveAnalysisRecord } from "@/lib/api";
-import { openReportInMailApp } from "@/lib/mailtoReport";
+import { openReportInMailApp, openReportInWebmail } from "@/lib/mailtoReport";
 import type { AnalyzeResponse } from "@/lib/analyze-types";
 import type { IngestResponse } from "@/lib/ingest-types";
 import styles from "./ingest.module.css";
@@ -86,8 +86,19 @@ export function IngestView() {
       emailOverride.trim() || undefined,
     );
     setExportMsg(
-      "If nothing opened, your browser or OS may be blocking mailto: links. Check default mail app (Windows: Settings → Apps).",
+      "If nothing opened, set your default Email app in Windows Settings and ensure MAILTO is mapped to it (Settings -> Apps -> Default apps).",
     );
+  }, [analysis, emailOverride, savedRecordId]);
+
+  const onOpenWebmail = useCallback(() => {
+    if (!savedRecordId || !analysis) return;
+    setExportMsg(null);
+    openReportInWebmail(
+      savedRecordId,
+      analysis,
+      emailOverride.trim() || undefined,
+    );
+    setExportMsg("Opened Gmail compose in a new tab.");
   }, [analysis, emailOverride, savedRecordId]);
 
   const removeFile = () => {
@@ -441,7 +452,14 @@ export function IngestView() {
                           className={styles.exportBtnSecc}
                           onClick={onOpenInMail}
                         >
-                          Open in email app
+                          Open email app
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.exportBtnSecc}
+                          onClick={onOpenWebmail}
+                        >
+                          Open Gmail draft
                         </button>
                       </div>
                     </div>
@@ -453,8 +471,10 @@ export function IngestView() {
             ) : (
               <EmptyState />
             )}
-            <RecentRecords refreshKey={recordRefresh} />
           </div>
+        </div>
+        <div className={styles.historySection}>
+          <RecentRecords refreshKey={recordRefresh} />
         </div>
       </main>
     </div>
@@ -486,8 +506,14 @@ function IngestResult({ data }: { data: IngestResponse }) {
     im && typeof im === "object" && im.source_url != null
       ? String(im.source_url)
       : "";
+  const shownChunks = data.chunks.slice(0, 4);
+  const hiddenChunkCount = Math.max(0, data.chunks.length - shownChunks.length);
+  const rawPreview =
+    data.raw_text.length > 700 ? `${data.raw_text.slice(0, 700)}…` : data.raw_text;
   return (
-    <div className={styles.resultCard}>
+    <details className={styles.auditCard}>
+      <summary className={styles.auditSummary}>Ingest technical details</summary>
+      <div className={styles.resultCard}>
       <div className={styles.section}>
         <div className={styles.sectionTitle}>Source</div>
         <p className={styles.metaLine}>
@@ -542,20 +568,24 @@ function IngestResult({ data }: { data: IngestResponse }) {
       <div className={styles.section}>
         <div className={styles.sectionTitle}>Chunks ({data.chunks.length})</div>
         <div className={styles.chunkList}>
-          {data.chunks.map((c, i) => (
+          {shownChunks.map((c, i) => (
             <div key={i} className={styles.chunk}>
               <strong>#{i + 1}</strong> ({c.length} chars)
               {"\n"}
               {c}
             </div>
           ))}
+          {hiddenChunkCount > 0 ? (
+            <p className={styles.metaLine}>+{hiddenChunkCount} additional chunks hidden.</p>
+          ) : null}
         </div>
       </div>
 
       <div className={styles.section}>
         <div className={styles.sectionTitle}>Raw (audit)</div>
-        <div className={styles.mono}>{data.raw_text}</div>
+        <div className={styles.mono}>{rawPreview}</div>
       </div>
-    </div>
+      </div>
+    </details>
   );
 }
