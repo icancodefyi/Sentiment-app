@@ -96,28 +96,6 @@ export function IngestView() {
     setExportMsg("Opened cybercrime email draft in Gmail with structured evidence.");
   }, [analysis, emailOverride, result, savedRecordId]);
 
-  const copyActionTemplate = useCallback(async (mode: "block" | "verify") => {
-    if (!result || !analysis || !navigator?.clipboard) return;
-    const source = result.source === "x_post" ? "social post" : "message";
-    const headline =
-      mode === "block"
-        ? "Action: Block sender and stop all further interaction."
-        : "Action: Request independent verification before any payment or sharing OTP.";
-    const text = [
-      headline,
-      `Risk: ${analysis.risk.score.toFixed(0)}/100 (${analysis.risk.band})`,
-      `Intent: ${analysis.intent.label} (${analysis.intent.confidence.toFixed(0)}% confidence)`,
-      `Context: suspicious ${source}.`,
-      "Recommended immediate step: do not click links or transfer money until verified.",
-    ].join("\n");
-    try {
-      await navigator.clipboard.writeText(text);
-      setExportMsg(mode === "block" ? "Block-sender advisory copied." : "Verification advisory copied.");
-    } catch {
-      setExportMsg("Could not copy advisory text.");
-    }
-  }, [analysis, result]);
-
   const removeFile = () => {
     setFile(null);
     if (preview) URL.revokeObjectURL(preview);
@@ -420,6 +398,9 @@ export function IngestView() {
                 {analysis && !analysisLoading && !analysisError ? (
                   <EvidenceExplainer analysis={analysis} ingest={result} />
                 ) : null}
+                {analysis && !analysisLoading && !analysisError ? (
+                  <ReplySuggestionsCard analysis={analysis} ingest={result} />
+                ) : null}
                 {analysis &&
                 !analysisLoading &&
                 !analysisError &&
@@ -473,20 +454,20 @@ export function IngestView() {
                         >
                           Report to cybercrime authority
                         </button>
-                        <button
+                        {/* <button
                           type="button"
                           className={styles.exportBtnSecc}
                           onClick={() => copyActionTemplate("block")}
                         >
                           Block sender
-                        </button>
-                        <button
+                        </button> */}
+                        {/* <button
                           type="button"
                           className={styles.exportBtnSecc}
                           onClick={() => copyActionTemplate("verify")}
                         >
                           Request verification
-                        </button>
+                        </button> */}
                       </div>
                     </div>
                     {!savedRecordId ? (
@@ -801,4 +782,176 @@ function humanizeSignalText(s: string) {
   const t = s.replace(/[-_]+/g, " ").trim();
   if (!t) return s;
   return t.replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function ReplySuggestionsCard({
+  analysis,
+  ingest,
+}: {
+  analysis: AnalyzeResponse;
+  ingest: IngestResponse;
+}) {
+  const [copyNote, setCopyNote] = useState<string | null>(null);
+  const [sim, setSim] = useState<{
+    attackerReply: string;
+    riskDelta: "down" | "flat" | "up";
+    nextAction: "report" | "block" | "verify";
+    note: string;
+  } | null>(null);
+  const replies = buildReplySuggestions(analysis, ingest);
+
+  const onCopy = useCallback(async (text: string, idx: number) => {
+    if (!navigator?.clipboard) {
+      setCopyNote("Clipboard unavailable in this browser.");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopyNote(`Reply ${idx + 1} copied.`);
+    } catch {
+      setCopyNote("Could not copy the reply.");
+    }
+  }, []);
+
+  return (
+    <section className={styles.replyCard} aria-label="Suggested replies">
+      <div className={styles.replyHead}>
+        <h3 className={styles.replyTitle}>Suggested replies</h3>
+        <span className={styles.replyHint}>Use as templates before sending</span>
+      </div>
+      <div className={styles.replyList}>
+        {replies.map((r, i) => (
+          <div key={i} className={styles.replyItem}>
+            <p className={styles.replyText}>{r}</p>
+            <button
+              type="button"
+              className={styles.replyCopyBtn}
+              onClick={() => onCopy(r, i)}
+            >
+              Copy reply
+            </button>
+            <button
+              type="button"
+              className={styles.replySimBtn}
+              onClick={() => setSim(simulateReplyOutcome(r, analysis))}
+            >
+              Simulate outcome
+            </button>
+          </div>
+        ))}
+      </div>
+      {sim ? (
+        <div className={styles.simCard} data-risk={sim.riskDelta}>
+          <div className={styles.simHead}>
+            <span className={styles.simTitle}>Simulated attacker response</span>
+            <span className={styles.simRiskTag}>
+              Risk {sim.riskDelta === "down" ? "decreases" : sim.riskDelta === "up" ? "increases" : "stays"}
+            </span>
+          </div>
+          <p className={styles.simReply}>{sim.attackerReply}</p>
+          <p className={styles.simMeta}>
+            Recommended next action:{" "}
+            <strong>
+              {sim.nextAction === "report"
+                ? "Report to cybercrime"
+                : sim.nextAction === "block"
+                  ? "Block sender"
+                  : "Request verification"}
+            </strong>
+          </p>
+          <p className={styles.simMeta}>{sim.note}</p>
+          <button
+            type="button"
+            className={styles.simClearBtn}
+            onClick={() => setSim(null)}
+          >
+            Clear simulation
+          </button>
+        </div>
+      ) : null}
+      {copyNote ? <p className={styles.replyNote}>{copyNote}</p> : null}
+    </section>
+  );
+}
+
+function buildReplySuggestions(analysis: AnalyzeResponse, ingest: IngestResponse): string[] {
+  const risk = analysis.risk.band;
+  const intent = analysis.intent.label;
+  const sourceLabel =
+    ingest.source === "x_post" ? "this post" : ingest.source === "chat" ? "this message" : "this communication";
+  const hasPaymentSignal =
+    analysis.signals.some((s) => /money|payment|transfer|upi|gift|crypto/i.test(s)) ||
+    ingest.entities.some((e) => /money/i.test(e.type));
+
+  if (risk === "high" || intent === "scam" || intent === "threat") {
+    return [
+      `I cannot proceed based on ${sourceLabel}. For security, I will verify this through the official website/app and support number only.`,
+      "I will not share OTPs, passwords, payment details, or click links from this message. Please provide official verification channels.",
+      "This appears suspicious. I am escalating this to cybercrime authorities and blocking further contact.",
+    ];
+  }
+
+  if (hasPaymentSignal || risk === "medium") {
+    return [
+      "Before any payment, please send an official invoice and verification from the registered organization channel.",
+      "I can continue only after I verify your request via the official app/website and known support contacts.",
+      "Please share complete details in writing, including reason, reference ID, and callback from an official number.",
+    ];
+  }
+
+  return [
+    "Thanks for the message. Please confirm key details from your official channel so I can proceed safely.",
+    "I will review this and respond after verification from trusted sources.",
+    "Received. Please avoid urgent payment or credential requests until identity and context are confirmed.",
+  ];
+}
+
+function simulateReplyOutcome(
+  replyText: string,
+  analysis: AnalyzeResponse,
+): {
+  attackerReply: string;
+  riskDelta: "down" | "flat" | "up";
+  nextAction: "report" | "block" | "verify";
+  note: string;
+} {
+  const t = replyText.toLowerCase();
+  const assertive = /will not|cannot proceed|escalating|block|authorities/.test(t);
+  const verify = /verify|official|invoice|reference|support/.test(t);
+  const engage = /thanks|review|respond/.test(t);
+  const highRisk = analysis.risk.band === "high" || analysis.intent.label === "scam" || analysis.intent.label === "threat";
+
+  if (assertive || highRisk) {
+    return {
+      attackerReply:
+        "Attacker likely applies more pressure ('final warning', 'account freeze now') or stops engagement once challenged.",
+      riskDelta: "down",
+      nextAction: "report",
+      note: "Strong boundary-setting reduces compliance risk; preserve evidence and avoid further interaction.",
+    };
+  }
+  if (verify) {
+    return {
+      attackerReply:
+        "Attacker may avoid official channels, provide vague details, or push urgency to bypass verification.",
+      riskDelta: "flat",
+      nextAction: "verify",
+      note: "Keep communication minimal; verify independently through trusted contact points.",
+    };
+  }
+  if (engage) {
+    return {
+      attackerReply:
+        "Attacker may continue rapport-building and gradually request payments/credentials.",
+      riskDelta: "up",
+      nextAction: "block",
+      note: "Extended engagement increases social-engineering exposure.",
+    };
+  }
+  return {
+    attackerReply: "Attacker behavior uncertain; likely repeats urgency or requests immediate action.",
+    riskDelta: "flat",
+    nextAction: "verify",
+    note: "Use verification-first workflow before any response with sensitive details.",
+  };
 }

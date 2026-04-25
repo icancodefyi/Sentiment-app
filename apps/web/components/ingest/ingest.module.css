@@ -330,6 +330,168 @@
   color: var(--ink-30);
 }
 
+.replyCard {
+  border: 1px solid var(--ink-10);
+  border-radius: var(--radius-xl);
+  background: white;
+  box-shadow: var(--shadow-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.replyHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.replyTitle {
+  margin: 0;
+  font-size: 1rem;
+  font-family: var(--font-serif), Georgia, serif;
+  color: var(--ink);
+}
+
+.replyHint {
+  font-size: 0.74rem;
+  color: var(--ink-30);
+}
+
+.replyList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.replyItem {
+  border: 1px solid var(--ink-10);
+  border-radius: var(--radius-md);
+  background: var(--cream);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.replyText {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.55;
+  color: var(--ink-60);
+}
+
+.replyCopyBtn {
+  align-self: flex-start;
+  border: 1px solid var(--ink-10);
+  background: white;
+  color: var(--ink-60);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.replyCopyBtn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.replySimBtn {
+  align-self: flex-start;
+  border: 1px solid var(--ink-10);
+  background: var(--paper);
+  color: var(--ink-60);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.replySimBtn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.simCard {
+  border: 1px solid var(--ink-10);
+  border-radius: var(--radius-md);
+  background: var(--paper);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.simCard[data-risk="down"] {
+  border-color: rgba(26, 122, 74, 0.35);
+  background: #e8f7ef;
+}
+
+.simCard[data-risk="up"] {
+  border-color: rgba(169, 50, 38, 0.35);
+  background: #fdecea;
+}
+
+.simHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.simTitle {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-30);
+}
+
+.simRiskTag {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--ink-60);
+}
+
+.simReply {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--ink-60);
+}
+
+.simMeta {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--ink-60);
+}
+
+.simClearBtn {
+  align-self: flex-start;
+  border: 1px solid var(--ink-10);
+  background: white;
+  color: var(--ink-60);
+  border-radius: var(--radius-sm);
+  padding: 5px 9px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.replyNote {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--ink-30);
+}
+
 .pageIntro {
   display: flex;
   flex-direction: column;
