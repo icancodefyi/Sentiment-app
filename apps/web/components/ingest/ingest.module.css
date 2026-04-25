@@ -9,7 +9,7 @@
 
 .analyzeLayout {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 32px;
   padding-top: 48px;
   align-items: start;
@@ -19,19 +19,22 @@
   display: flex;
   flex-direction: column;
   gap: 28px;
+  min-width: 0;
 }
 
 .analyzeRight {
   position: sticky;
   top: 24px;
+  min-width: 0;
 }
 
+/* Let the page scroll — inner max-height breaks Recharts ResponsiveContainer */
 .rightStack {
   display: flex;
   flex-direction: column;
   gap: 24px;
-  max-height: calc(100vh - 88px);
-  overflow-y: auto;
+  min-width: 0;
+  width: 100%;
   padding-bottom: 8px;
 }
 
@@ -217,6 +220,7 @@
 
 .modeSelector {
   display: flex;
+  flex-wrap: wrap;
   background: var(--paper);
   border-radius: var(--radius-md);
   padding: 4px;
@@ -224,10 +228,11 @@
 }
 
 .modeBtn {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: min(100%, 4.5rem);
   background: none;
   border: none;
-  padding: 8px 4px;
+  padding: 8px 6px;
   font-size: 0.8rem;
   font-weight: 500;
   color: var(--ink-60);
@@ -705,17 +710,19 @@
   line-height: 1.7;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .analyzeLayout {
     grid-template-columns: 1fr;
     padding-top: 32px;
-    gap: 24px;
+    gap: 28px;
   }
 
   .analyzeRight {
     position: static;
   }
+}
 
+@media (max-width: 900px) {
   .appMain {
     padding: 0 16px 48px;
   }

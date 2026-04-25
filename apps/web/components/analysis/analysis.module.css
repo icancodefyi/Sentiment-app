@@ -2,9 +2,13 @@
   background: white;
   border: 1px solid var(--ink-10);
   border-radius: var(--radius-xl);
-  overflow: hidden;
+  /* Charts + tooltips must not be clipped by the card shell */
+  overflow: visible;
   box-shadow: var(--shadow-md);
   animation: slideIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 
 @keyframes slideIn {
@@ -21,8 +25,10 @@
 .verdict {
   padding: 20px 24px;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 14px;
+  min-width: 0;
 }
 
 .verdictEmoji {
@@ -31,7 +37,8 @@
 }
 
 .verdictBody {
-  flex: 1;
+  flex: 1 1 12rem;
+  min-width: 0;
 }
 
 .verdictLabel {
@@ -139,25 +146,54 @@
 
 .chartsRow {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   border-top: 1px solid var(--ink-10);
+  min-width: 0;
 }
 
 .chartBlock {
-  padding: 16px 16px 12px;
+  padding: 16px 12px 12px;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-width: 0;
 }
 
 .chartBlock:first-child {
   border-right: 1px solid var(--ink-10);
 }
 
+.chartWrap {
+  width: 100%;
+  min-width: 0;
+  height: 168px;
+  position: relative;
+}
+
+@media (max-width: 640px) {
+  .chartsRow {
+    grid-template-columns: 1fr;
+  }
+  .chartBlock:first-child {
+    border-right: none;
+    border-bottom: 1px solid var(--ink-10);
+  }
+  .chartWrap {
+    height: 200px;
+  }
+}
+
 .emotionGrid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+  min-width: 0;
+}
+
+@media (max-width: 420px) {
+  .emotionGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .emotionCell {
@@ -288,13 +324,14 @@
 
 .intentGrid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
+  min-width: 0;
 }
 
-@media (max-width: 520px) {
+@media (max-width: 640px) {
   .intentGrid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -346,6 +383,9 @@
   color: var(--ink-60);
   line-height: 1.65;
   font-style: italic;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  min-width: 0;
 }
 
 .footer {

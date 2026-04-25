@@ -185,40 +185,48 @@ export function AnalysisCard({ data, loading, error }: Props) {
       <div className={styles.chartsRow}>
         <div className={styles.chartBlock}>
           <div className={styles.sectionTitle}>Distribution</div>
-          <ResponsiveContainer width="100%" height={140}>
-            <PieChart>
-              <Pie
-                data={pieData}
-                cx="50%"
-                cy="50%"
-                innerRadius={38}
-                outerRadius={58}
-                paddingAngle={3}
-                dataKey="value"
-              >
-                {pieData.map((d) => (
-                  <Cell key={d.name} fill={d.color} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(v) => `${Number(v).toFixed(1)}`} />
-            </PieChart>
-          </ResponsiveContainer>
+          <div className={styles.chartWrap}>
+            <ResponsiveContainer width="100%" height="100%" debounce={50}>
+              <PieChart margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
+                <Pie
+                  data={pieData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius="32%"
+                  outerRadius="48%"
+                  paddingAngle={3}
+                  dataKey="value"
+                >
+                  {pieData.map((d) => (
+                    <Cell key={d.name} fill={d.color} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(v) => `${Number(v).toFixed(1)}`} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
         </div>
         <div className={styles.chartBlock}>
           <div className={styles.sectionTitle}>Comparison</div>
-          <ResponsiveContainer width="100%" height={140}>
-            <BarChart data={barData} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--ink-10)" />
-              <XAxis dataKey="name" tick={{ fontSize: 10, fill: "var(--ink-60)" }} />
-              <YAxis tick={{ fontSize: 10, fill: "var(--ink-60)" }} domain={[0, 100]} />
-              <Tooltip formatter={(v) => `${Number(v).toFixed(1)}`} />
-              <Bar dataKey="score" radius={[4, 4, 0, 0]}>
-                {barData.map((_, i) => (
-                  <Cell key={i} fill={pieData[i].color} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          <div className={styles.chartWrap}>
+            <ResponsiveContainer width="100%" height="100%" debounce={50}>
+              <BarChart data={barData} margin={{ top: 10, right: 6, left: 4, bottom: 4 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--ink-10)" />
+                <XAxis dataKey="name" tick={{ fontSize: 10, fill: "var(--ink-60)" }} interval={0} />
+                <YAxis
+                  width={28}
+                  tick={{ fontSize: 10, fill: "var(--ink-60)" }}
+                  domain={[0, 100]}
+                />
+                <Tooltip formatter={(v) => `${Number(v).toFixed(1)}`} />
+                <Bar dataKey="score" radius={[4, 4, 0, 0]}>
+                  {barData.map((_, i) => (
+                    <Cell key={i} fill={pieData[i].color} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </div>
 
