@@ -5,7 +5,7 @@ import { useDropzone } from "react-dropzone";
 import { AnalysisCard } from "@/components/analysis/AnalysisCard";
 import { RecentRecords } from "@/components/history/RecentRecords";
 import { Header } from "@/components/shell/Header";
-import { analyzeCommunication, downloadRecordPdf, ingestChat, ingestImage, ingestText, saveAnalysisRecord } from "@/lib/api";
+import { analyzeCommunication, downloadRecordPdf, ingestChat, ingestImage, ingestText, ingestXPost, saveAnalysisRecord } from "@/lib/api";
 import { openReportInMailApp } from "@/lib/mailtoReport";
 import type { AnalyzeResponse } from "@/lib/analyze-types";
 import type { IngestResponse } from "@/lib/ingest-types";
@@ -13,6 +13,7 @@ import styles from "./ingest.module.css";
 
 const MODES = [
   { id: "text" as const, label: "Text" },
+  { id: "x" as const, label: "X post" },
   { id: "image" as const, label: "Image" },
   { id: "chat" as const, label: "Chat log" },
 ];
@@ -26,6 +27,7 @@ export function IngestView() {
   const [mode, setMode] = useState<(typeof MODES)[number]["id"]>("text");
   const [text, setText] = useState("");
   const [chatText, setChatText] = useState("");
+  const [postUrl, setPostUrl] = useState("");
   const [contextText, setContextText] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -58,7 +60,8 @@ export function IngestView() {
     maxSize: 12 * 1024 * 1024,
   });
 
-  const charCount = mode === "text" ? text.length : chatText.length;
+  const charCount =
+    mode === "text" ? text.length : mode === "x" ? postUrl.length : chatText.length;
 
   const onDownloadPdf = useCallback(async () => {
     if (!savedRecordId) return;
@@ -105,6 +108,10 @@ export function IngestView() {
       setError("Please enter some text.");
       return;
     }
+    if (mode === "x" && !postUrl.trim()) {
+      setError("Paste an x.com or twitter.com post link.");
+      return;
+    }
     if (mode === "image" && !file) {
       setError("Please upload an image.");
       return;
@@ -122,6 +129,8 @@ export function IngestView() {
       let ing: IngestResponse;
       if (mode === "text") {
         ing = await ingestText(text);
+      } else if (mode === "x") {
+        ing = await ingestXPost(postUrl.trim());
       } else if (mode === "image") {
         ing = await ingestImage(file!, contextText);
       } else {
@@ -179,9 +188,9 @@ export function IngestView() {
                 <em>structured signal.</em>
               </h1>
               <p className={styles.pageSubtitle}>
-                Ingest text, chat logs, or images — the API then runs Groq on the
-                cleaned transcript: sentiment, emotions, tone, intent, risk, and
-                model + rule signals.
+                Ingest text, an X post by URL, chat logs, or images — the API
+                then runs Groq on the cleaned transcript: sentiment, emotions,
+                tone, intent, risk, and model + rule signals.
                 Put <span className={styles.inlineCode}>GROQ_API_KEY</span> in{" "}
                 <span className={styles.inlineCode}>apps/api/.env</span> (not the web
                 bundle). <strong>MongoDB</strong> URI belongs only in{" "}
@@ -242,6 +251,32 @@ export function IngestView() {
                       </button>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {mode === "x" && (
+                <div className={styles.fieldGroup}>
+                  <div className={styles.fieldHeader}>
+                    <label className={styles.fieldLabel} htmlFor="ingest-x-url">
+                      Post URL
+                    </label>
+                    <span className={styles.charCount}>{charCount}/2048</span>
+                  </div>
+                  <input
+                    id="ingest-x-url"
+                    className={`${styles.textInput} ${styles.urlInput}`}
+                    type="url"
+                    inputMode="url"
+                    autoComplete="url"
+                    placeholder="https://x.com/user/status/123… or x.com/i/web/status/…"
+                    value={postUrl}
+                    onChange={(e) => setPostUrl(e.target.value)}
+                    maxLength={2048}
+                  />
+                  <p className={styles.metaLine}>
+                    Public posts only. Private or removed posts return an error from the
+                    fetch service.
+                  </p>
                 </div>
               )}
 
@@ -436,9 +471,9 @@ function EmptyState() {
         <div className={styles.emptyIcon}>✦</div>
         <p className={styles.emptyTitle}>Ingest output appears here</p>
         <p className={styles.emptyBody}>
-          Run text, chat lines, or an image on the left. You will get Groq-backed
-          analysis (including intent and risk) plus the ingest audit trail (cleaned text,
-          OCR meta, chunks, entities).
+          Run text, an X post URL, chat lines, or an image on the left. You will get
+          Groq-backed analysis (including intent and risk) plus the ingest audit trail
+          (cleaned text, OCR meta when applicable, chunks, entities).
         </p>
       </div>
     </div>
@@ -446,12 +481,31 @@ function EmptyState() {
 }
 
 function IngestResult({ data }: { data: IngestResponse }) {
+  const im = data.ingest_meta;
+  const sourceUrl =
+    im && typeof im === "object" && im.source_url != null
+      ? String(im.source_url)
+      : "";
   return (
     <div className={styles.resultCard}>
       <div className={styles.section}>
         <div className={styles.sectionTitle}>Source</div>
         <p className={styles.metaLine}>
           <strong>{data.source}</strong>
+          {data.source === "x_post" && sourceUrl ? (
+            <>
+              {" "}
+              ·{" "}
+              <a
+                className={styles.xPostLink}
+                href={sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Open post
+              </a>
+            </>
+          ) : null}
           {data.ocr_meta ? (
             <>
               {" "}

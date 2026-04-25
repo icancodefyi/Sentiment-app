@@ -45,6 +45,7 @@ def api_v1_index() -> dict[str, object]:
             "text": "POST /api/v1/ingest/text",
             "chat": "POST /api/v1/ingest/chat",
             "image": "POST /api/v1/ingest/image (multipart)",
+            "x_post": "POST /api/v1/ingest/x-post {url}",
         },
         "analyze": "POST /api/v1/analyze (sentiment, tone, intent, risk, signals)",
         "records": "POST/GET /api/v1/records (MongoDB)",

@@ -300,6 +300,12 @@
   background: white;
 }
 
+/* Single-line URL / text (avoid textarea min-height) */
+.urlInput {
+  resize: none;
+  min-height: 48px;
+}
+
 .sampleRow {
   display: flex;
   align-items: center;
@@ -580,6 +586,16 @@
 .metaLine {
   font-size: 0.8rem;
   color: var(--ink-60);
+}
+
+.xPostLink {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.xPostLink:hover {
+  color: var(--ink);
 }
 
 .emptyState {

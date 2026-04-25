@@ -2,7 +2,7 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
-from app.schemas.ingest import ChatIngestBody, IngestResponse, TextIngestBody
+from app.schemas.ingest import ChatIngestBody, IngestResponse, TextIngestBody, XPostIngestBody
 from app.services.entities import extract_entities
 from app.services.ocr_service import OCRNotAvailableError, ocr_image_bytes
 from app.services.text_normalize import chunk_text, normalize_text
@@ -14,9 +14,10 @@ _MAX_IMAGE_BYTES = 12 * 1024 * 1024
 
 
 def _build_response(
-    source: Literal["text", "image", "chat"],
+    source: Literal["text", "image", "chat", "x_post"],
     raw: str,
     ocr_meta: dict | None = None,
+    ingest_meta: dict | None = None,
 ) -> IngestResponse:
     cleaned = normalize_text(raw)
     chunks = chunk_text(cleaned)
@@ -28,6 +29,7 @@ def _build_response(
         chunks=chunks,
         entities=entities,
         ocr_meta=ocr_meta,
+        ingest_meta=ingest_meta,
     )
 
 
@@ -81,3 +83,17 @@ async def ingest_image(
         raw = "(no text detected in image)"
 
     return _build_response("image", raw, ocr_meta=ocr_meta)
+
+
+@router.post("/x-post", response_model=IngestResponse)
+def ingest_x_post(body: XPostIngestBody) -> IngestResponse:
+    """Fetch public post text from an x.com / twitter.com post URL, then run the same text pipeline."""
+    from app.services.x_post_fetch import fetch_x_post_text
+
+    try:
+        raw, meta = fetch_x_post_text(body.url)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except RuntimeError as e:
+        raise HTTPException(status_code=502, detail=str(e)) from e
+    return _build_response("x_post", raw, ingest_meta=meta)

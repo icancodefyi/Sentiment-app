@@ -64,6 +64,11 @@ def build_record_pdf_bytes(rec_id: str) -> bytes:
     story.append(Paragraph(escape(f"Generated: {created}"), meta))
     src = str(ingest.get("source", "—"))
     story.append(Paragraph(escape(f"Ingest source: {src}"), meta))
+    im = ingest.get("ingest_meta")
+    if isinstance(im, dict) and im.get("source_url"):
+        story.append(
+            Paragraph(escape(f"X post: {_for_pdf(str(im.get('source_url', '')))}"), meta),
+        )
     story.append(Spacer(1, 0.2 * inch))
 
     r = (analysis.get("risk") or {}) if analysis else {}

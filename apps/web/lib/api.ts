@@ -40,6 +40,19 @@ export async function fetchHealth(): Promise<{
   return parseJson(res);
 }
 
+export async function ingestXPost(url: string): Promise<IngestResponse> {
+  const res = await fetch(`${base()}/api/v1/ingest/x-post`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url }),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(formatErrorBody(err, res.statusText));
+  }
+  return parseJson<IngestResponse>(res);
+}
+
 export async function ingestText(text: string): Promise<IngestResponse> {
   const res = await fetch(`${base()}/api/v1/ingest/text`, {
     method: "POST",
