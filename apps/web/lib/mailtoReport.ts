@@ -1,4 +1,5 @@
 import type { AnalyzeResponse } from "./analyze-types";
+import type { IngestResponse } from "./ingest-types";
 
 /**
  * Many browsers and Windows mail handlers fail/silently no-op for long mailto URLs.
@@ -91,5 +92,74 @@ export function openReportInWebmail(
   const body = buildMailBody(recordId, analysis);
   const toPart = to?.trim() ? to.trim() : "";
   const gmail = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(toPart)}&su=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`;
+  if (typeof window !== "undefined") window.open(gmail, "_blank", "noopener,noreferrer");
+}
+
+export function openCybercrimeDraftInWebmail(args: {
+  recordId: string;
+  analysis: AnalyzeResponse;
+  ingest: IngestResponse;
+  to?: string;
+  suspiciousSpans?: string[];
+}): void {
+  const { recordId, analysis, ingest, suspiciousSpans = [], to } = args;
+  const toPart = to?.trim() ? to.trim() : "";
+  const sourceUrl =
+    ingest.ingest_meta &&
+    typeof ingest.ingest_meta === "object" &&
+    ingest.ingest_meta.source_url != null
+      ? String(ingest.ingest_meta.source_url)
+      : "-";
+  const entities = (ingest.entities ?? []).slice(0, 10);
+  const signals = (analysis.signals ?? []).slice(0, 10);
+  const spans = suspiciousSpans.slice(0, 4);
+  const confidence = Math.max(
+    0,
+    Math.min(100, (analysis.intent.confidence + analysis.sentiment.confidence) / 2),
+  );
+  const uncertainty = Math.max(0, 100 - confidence);
+
+  const lines: string[] = [
+    "To: Cybercrime Authority",
+    "",
+    "Structured Incident Summary",
+    "---------------------------",
+    `Record ID: ${recordId}`,
+    `Source type: ${ingest.source}`,
+    `Source URL: ${sourceUrl}`,
+    "",
+    "Risk Assessment",
+    "---------------",
+    `Risk score: ${Math.round(analysis.risk.score)}/100 (${analysis.risk.band})`,
+    `Intent: ${analysis.intent.label} (${Math.round(analysis.intent.confidence)}% confidence)`,
+    `Sentiment: ${analysis.sentiment.label} (${Math.round(analysis.sentiment.confidence)}% confidence)`,
+    `Overall certainty: ${Math.round(confidence)}% | Uncertainty: ${Math.round(uncertainty)}%`,
+    "",
+    "Triggered Signals",
+    "-----------------",
+    ...(signals.length > 0 ? signals.map((s) => `- ${s}`) : ["- none"]),
+    "",
+    "Extracted Entities",
+    "------------------",
+    ...(entities.length > 0
+      ? entities.map((e) => `- ${e.type}: ${e.value}`)
+      : ["- none"]),
+    "",
+    "Suspicious Spans",
+    "----------------",
+    ...(spans.length > 0
+      ? spans.map((s, i) => `${i + 1}. ${s}`)
+      : ["1. No high-signal span isolated from the cleaned text."]),
+    "",
+    "Analyst Request",
+    "---------------",
+    "Please review this communication for potential cyber fraud / threat and advise next legal steps.",
+    "",
+    "Note: Full PDF report and original evidence can be attached from SentinelX.",
+  ];
+
+  const subject = `Cybercrime incident report - ${analysis.risk.band.toUpperCase()} risk - ${recordId.slice(-10)}`;
+  const body = lines.join("\n").slice(0, 7000);
+  const gmail = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(toPart)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   if (typeof window !== "undefined") window.open(gmail, "_blank", "noopener,noreferrer");
 }

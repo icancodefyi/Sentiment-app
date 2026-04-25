@@ -6,7 +6,7 @@ import { AnalysisCard } from "@/components/analysis/AnalysisCard";
 import { RecentRecords } from "@/components/history/RecentRecords";
 import { Header } from "@/components/shell/Header";
 import { analyzeCommunication, downloadRecordPdf, ingestChat, ingestImage, ingestText, ingestXPost, saveAnalysisRecord } from "@/lib/api";
-import { openReportInWebmail } from "@/lib/mailtoReport";
+import { openCybercrimeDraftInWebmail } from "@/lib/mailtoReport";
 import type { AnalyzeResponse } from "@/lib/analyze-types";
 import type { IngestResponse } from "@/lib/ingest-types";
 import styles from "./ingest.module.css";
@@ -77,16 +77,46 @@ export function IngestView() {
     }
   }, [savedRecordId]);
 
-  const onOpenWebmail = useCallback(() => {
-    if (!savedRecordId || !analysis) return;
+  const onReportCybercrime = useCallback(() => {
+    if (!result || !analysis) return;
     setExportMsg(null);
-    openReportInWebmail(
-      savedRecordId,
+    const id = savedRecordId ?? `unsaved-${Date.now().toString().slice(-6)}`;
+    const snippets = buildSuspiciousSnippets(
+      result.cleaned_text,
+      result.entities.slice(0, 8),
+      analysis.signals.slice(0, 8),
+    ).map((s) => s.text);
+    openCybercrimeDraftInWebmail({
+      recordId: id,
       analysis,
-      emailOverride.trim() || undefined,
-    );
-    setExportMsg("Opened Gmail compose in a new tab.");
-  }, [analysis, emailOverride, savedRecordId]);
+      ingest: result,
+      to: emailOverride.trim() || undefined,
+      suspiciousSpans: snippets,
+    });
+    setExportMsg("Opened cybercrime email draft in Gmail with structured evidence.");
+  }, [analysis, emailOverride, result, savedRecordId]);
+
+  const copyActionTemplate = useCallback(async (mode: "block" | "verify") => {
+    if (!result || !analysis || !navigator?.clipboard) return;
+    const source = result.source === "x_post" ? "social post" : "message";
+    const headline =
+      mode === "block"
+        ? "Action: Block sender and stop all further interaction."
+        : "Action: Request independent verification before any payment or sharing OTP.";
+    const text = [
+      headline,
+      `Risk: ${analysis.risk.score.toFixed(0)}/100 (${analysis.risk.band})`,
+      `Intent: ${analysis.intent.label} (${analysis.intent.confidence.toFixed(0)}% confidence)`,
+      `Context: suspicious ${source}.`,
+      "Recommended immediate step: do not click links or transfer money until verified.",
+    ].join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      setExportMsg(mode === "block" ? "Block-sender advisory copied." : "Verification advisory copied.");
+    } catch {
+      setExportMsg("Could not copy advisory text.");
+    }
+  }, [analysis, result]);
 
   const removeFile = () => {
     setFile(null);
@@ -410,13 +440,12 @@ export function IngestView() {
                       : null}
                   </p>
                 ) : null}
-                {savedRecordId && persistNote === "saved" && !analysisLoading && !analysisError ? (
+                {analysis && !analysisLoading && !analysisError ? (
                   <div className={styles.exportBar}>
                     <div className={styles.exportTop}>
                       <span className={styles.exportBadge}>Reports</span>
                       <span className={styles.exportHint}>
-                        5.10: PDF from API. 5.11: opens your mail app (mailto:) — no passwords;
-                        attach the PDF yourself if you need a file.
+                        Action center: draft a cybercrime report and copy immediate response guidance.
                       </span>
                     </div>
                     <div className={styles.exportRow}>
@@ -424,7 +453,7 @@ export function IngestView() {
                         type="button"
                         className={styles.exportBtn}
                         onClick={onDownloadPdf}
-                        disabled={pdfBusy}
+                        disabled={pdfBusy || !savedRecordId}
                       >
                         {pdfBusy ? "Preparing…" : "Download PDF report"}
                       </button>
@@ -440,12 +469,31 @@ export function IngestView() {
                         <button
                           type="button"
                           className={styles.exportBtnSecc}
-                          onClick={onOpenWebmail}
+                          onClick={onReportCybercrime}
                         >
-                          Open Gmail draft
+                          Report to cybercrime authority
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.exportBtnSecc}
+                          onClick={() => copyActionTemplate("block")}
+                        >
+                          Block sender
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.exportBtnSecc}
+                          onClick={() => copyActionTemplate("verify")}
+                        >
+                          Request verification
                         </button>
                       </div>
                     </div>
+                    {!savedRecordId ? (
+                      <p className={styles.exportMsg}>
+                        Save to MongoDB to enable PDF export. Cybercrime draft and actions work now.
+                      </p>
+                    ) : null}
                     {exportMsg ? <p className={styles.exportMsg}>{exportMsg}</p> : null}
                   </div>
                 ) : null}
